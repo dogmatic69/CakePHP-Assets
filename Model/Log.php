@@ -1,7 +1,12 @@
 <?php
+/**
+ * Log model
+ */
+
 class Log extends AppModel {
 
-	var $name = 'Log';
-	var $order = 'created DESC';
+	public $name = 'Log';
+
+	public $order = 'created DESC';
+
 }
-?>
