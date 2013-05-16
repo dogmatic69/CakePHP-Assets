@@ -23,7 +23,7 @@
  *
  * Install instructions :
  * 
- *  - Place the newest version of RevisionBehavior in your app/models/behaviors folder
+ *  - download or clone the repo and place the contents in APP/Plugin/CakePHPAssets
  *  - Add the behavior to AppModel (or single models if you prefer)
  *  - Create a shadow table for each model that you want revision for.
  *  - Behavior will gracefully do nothing for models that has behavior, without table
@@ -33,7 +33,7 @@
  * 
  * You should make these AFTER you have baked your ordinary tables as they may interfer. By default
  * the tables should be named "[prefix][model_table_name]_revs" If you wish to change the suffix you may
- * do so in the property called $revision_suffix found bellow. Also by default the behavior expects
+ * do so in the property called $_revisionSuffix found bellow. Also by default the behavior expects
  * the revision tables to be in the same dbconfig as the model, but you may change this on a per 
  * model basis with the useDbConfig config option.
  * 
@@ -79,31 +79,36 @@
  * behavior (even if secondary model does not have a shadow table).
  * 
  * 1.1.1 => 1.1.2 changelog
- *   - revisions() got new paramter: $include_current
- *     This now defaults to false, resulting in a change from 1.1.1. See tests
+ * 	- revisions() got new paramter: $include_current
+ * 		This now defaults to false, resulting in a change from 1.1.1. See tests
  *
  * 1.1.6 => 1.2 
- *   - includes HABTM revision control (one way)
+ * 	- includes HABTM revision control (one way)
  *
  * 1.2 => 1.2.1
- *   - api change in revertToDate, added paramter for force delete if reverting to before earliest
+ * 	- api change in revertToDate, added paramter for force delete if reverting to before earliest
  * 
  * 1.2.6 => 1.2.7
- * 	 - api change: removed shadow(), changed revertToDate() to only recurse into related models that
- *     are dependent when cascade is true
+ * 	- api change: removed shadow(), changed revertToDate() to only recurse into related models that
+ * 		are dependent when cascade is true
+ *
+ * x => 3.0.0
+ * 	- Upgraded to CakePHP 2.x branch
+ * 	- Code formatting fixes to match CakePHP conventions more closely
+ *  - Removed private methods and properties (to protected)
  * 
  * @author Ronny Vindenes
  * @author Alexander 'alkemann' Morland
+ * @author Carl Sutton (dogmatic69)
  * @license MIT
- * @modifed 27. march 2009
- * @version 2.0.4
+ * @version 3.0.0
  */
+
 class RevisionBehavior extends ModelBehavior {
 
 	/**
 	 * Behavior settings
 	 * 
-	 * @access public
 	 * @var array
 	 */
 	public $settings = array();
@@ -112,18 +117,16 @@ class RevisionBehavior extends ModelBehavior {
 	 * Shadow table prefix
 	 * Only change this value if it causes table name crashes
 	 *
-	 * @access private
 	 * @var string
 	 */
-	private $revision_suffix = '_revs';
+	protected $_revisionSuffix = '_revs';
 
 	/**
 	 * Defaul setting values
 	 *
-	 * @access private
 	 * @var array
 	 */
-	private $defaults = array(
+	protected $_defaults = array(
 		'limit' => false,
 		'auto' => true,
 		'ignore' => array(),
@@ -136,7 +139,7 @@ class RevisionBehavior extends ModelBehavior {
 	 *
 	 * @var array
 	 */
-	private $oldData = array();
+	protected $_oldData = array();
 
 	/**
 	 * Configure the behavior through the Model::actsAs property
@@ -146,9 +149,9 @@ class RevisionBehavior extends ModelBehavior {
 	 */
 	public function setup($Model, $config = null) {	
 		if (is_array($config)) {
-			$this->settings[$Model->alias] = array_merge($this->defaults, $config);			
+			$this->settings[$Model->alias] = array_merge($this->_defaults, $config);			
 		} else {
-			$this->settings[$Model->alias] = $this->defaults;
+			$this->settings[$Model->alias] = $this->_defaults;
 		}
 		if (empty($Model->logableAction)) {
 			$Model->logableAction = array();
@@ -308,7 +311,7 @@ class RevisionBehavior extends ModelBehavior {
 	 * @param int $page
 	 * @param int $limit
 	 */
-	private function init($Model, $page, $limit) {
+	protected function init($Model, $page, $limit) {
 		$habtm = array();
 		$all_habtm = $Model->getAssociated('hasAndBelongsToMany');
 		foreach ($all_habtm as $assocAlias) {
@@ -841,10 +844,10 @@ class RevisionBehavior extends ModelBehavior {
 		$changeDetected = false;
 		foreach ($data[$Model->alias] as $key => $value) {
 			if ( isset($data[$Model->alias][$Model->primaryKey]) 
-					&& !empty($this->oldData[$Model->alias]) 
-					&& isset($this->oldData[$Model->alias][$Model->alias][$key])) {
+					&& !empty($this->_oldData[$Model->alias]) 
+					&& isset($this->_oldData[$Model->alias][$Model->alias][$key])) {
 						
-				$old_value = $this->oldData[$Model->alias][$Model->alias][$key];
+				$old_value = $this->_oldData[$Model->alias][$Model->alias][$key];
 			} else {
 				$old_value = '';
 			}
@@ -858,7 +861,7 @@ class RevisionBehavior extends ModelBehavior {
 				if (in_array($assocAlias,$this->settings[$Model->alias]['ignore'])) {
 					continue;
 				}				
-				$oldIds = Set::extract($this->oldData[$Model->alias],$assocAlias.'.{n}.id');
+				$oldIds = Set::extract($this->_oldData[$Model->alias],$assocAlias.'.{n}.id');
 		  if (!isset($Model->data[$assocAlias])) {					
 			$Model->ShadowModel->set($assocAlias, implode(',', $oldIds));
 			continue;
@@ -873,7 +876,7 @@ class RevisionBehavior extends ModelBehavior {
 		  }
 			}   			
 		}
-		unset($this->oldData[$Model->alias]); 		
+		unset($this->_oldData[$Model->alias]); 		
 		if (!$changeDetected) {
 			return true;
 		}
@@ -946,7 +949,7 @@ class RevisionBehavior extends ModelBehavior {
 				$habtm[] = $assocAlias;	
 			} 
 		}		
-		$this->oldData[$Model->alias] = $Model->find('first', array(
+		$this->_oldData[$Model->alias] = $Model->find('first', array(
 				'contain'=> $habtm,
 				'conditions' => array($Model->alias.'.' . $Model->primaryKey => $Model->id)));
 		
@@ -959,7 +962,7 @@ class RevisionBehavior extends ModelBehavior {
 	 * @param object $Model
 	 * @return boolean
 	 */
-	private function createShadowModel($Model) {
+	protected function createShadowModel($Model) {
 		if (is_null($this->settings[$Model->alias]['useDbConfig'])) {
 			$dbConfig = $Model->useDbConfig;
 		} else {
@@ -971,7 +974,7 @@ class RevisionBehavior extends ModelBehavior {
 		} else {
 		  $shadow_table = Inflector::tableize($Model->name);
 		}
-		$shadow_table = $shadow_table . $this->revision_suffix;
+		$shadow_table = $shadow_table . $this->_revisionSuffix;
 		$prefix = $Model->tablePrefix ? $Model->tablePrefix : $db->config['prefix'];
 		$full_table_name = $prefix . $shadow_table;
 	
